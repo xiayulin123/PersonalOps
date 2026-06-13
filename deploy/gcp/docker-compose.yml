@@ -1,0 +1,77 @@
+# PersonalOps Plan B — GCP VM / local Docker stack
+# Usage:
+#   cd personalops/deploy/gcp
+#   cp env.example .env   # fill secrets
+#   docker compose up -d --build
+#
+# Open http://localhost (or your VM IP). Bootstrap admin once:
+#   docker compose exec api python -m personalops_cli admin bootstrap
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: personalops
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d personalops"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ../..
+      dockerfile: deploy/gcp/Dockerfile.api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DEPLOYMENT_MODE: cloud
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@db:5432/personalops
+      PERSONALOPS_DATA_DIR: /data
+      CHROMA_PERSIST_DIR: /data/chroma
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      JWT_EXPIRE_HOURS: ${JWT_EXPIRE_HOURS:-168}
+      CREDENTIALS_ENCRYPTION_KEY: ${CREDENTIALS_ENCRYPTION_KEY:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@personalops.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      GCS_STORAGE_ENABLED: ${GCS_STORAGE_ENABLED:-true}
+      GCS_APP_BUCKET: ${GCS_APP_BUCKET:-personalops-personal}
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcs-sa.json
+      OCR_PROVIDER: ${OCR_PROVIDER:-azure}
+      AZURE_VISION_ENDPOINT: ${AZURE_VISION_ENDPOINT:-}
+      AZURE_VISION_KEY: ${AZURE_VISION_KEY:-}
+      WEB_SEARCH_PROVIDER: ${WEB_SEARCH_PROVIDER:-tavily}
+      LIFE_OAUTH_GOOGLE_REDIRECT_URI: ${LIFE_OAUTH_GOOGLE_REDIRECT_URI:-}
+      LIFE_OAUTH_MICROSOFT_REDIRECT_URI: ${LIFE_OAUTH_MICROSOFT_REDIRECT_URI:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      MS_GRAPH_CLIENT_ID: ${MS_GRAPH_CLIENT_ID:-}
+      MS_GRAPH_CLIENT_SECRET: ${MS_GRAPH_CLIENT_SECRET:-}
+    volumes:
+      - app-data:/data
+      - ${GCS_SA_FILE:-./secrets/gcs-archive-sa.json}:/run/secrets/gcs-sa.json:ro
+    expose:
+      - "8000"
+
+  web:
+    build:
+      context: ../..
+      dockerfile: deploy/gcp/Dockerfile.web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "${HTTP_PORT:-80}:8080"
+    expose:
+      - "8080"
+
+volumes:
+  postgres-data:
+  app-data:

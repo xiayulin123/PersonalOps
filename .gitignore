@@ -1,0 +1,73 @@
+# =============================================================================
+# PersonalOps — do NOT commit secrets or local runtime data
+# =============================================================================
+
+# --- Secrets & credentials ---
+.env
+**/.env
+!**/.env.example
+
+secrets/
+**/secrets/
+*-sa.json
+*service-account*.json
+*credentials*.json
+!**/package.json
+!**/package-lock.json
+!**/tsconfig*.json
+
+# --- Local user data (SQLite, Chroma, uploads, GCS cache) ---
+data/
+**/data/personalops.db
+**/data/chroma/
+**/data/uploads/
+**/data/_gcs_cache/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+
+# --- Node / frontend ---
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+*.local
+
+# --- Rust / Tauri ---
+**/src-tauri/target/
+
+# --- Docker deploy (keep env.example, ignore real .env) ---
+deploy/gcp/.env
+deploy/gcp/secrets/
+
+# --- Logs & OS ---
+*.log
+logs/
+.DS_Store
+Thumbs.db
+
+# --- IDE ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# --- Misc local DB files (outside data/) ---
+*.db
+*.sqlite
+*.sqlite3

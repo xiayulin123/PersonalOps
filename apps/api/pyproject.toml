@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "personalops"
+version = "0.1.0"
+description = "Local-first AI workspace — guided terminal CLI"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0,<1.0.0",
+    "uvicorn[standard]>=0.32.0,<1.0.0",
+    "sqlalchemy>=2.0.36,<3.0.0",
+    "aiosqlite>=0.20.0,<1.0.0",
+    "asyncpg>=0.30.0,<1.0.0",
+    "psycopg2-binary>=2.9.0,<3.0.0",
+    "pydantic>=2.10.0,<3.0.0",
+    "pydantic-settings>=2.6.0,<3.0.0",
+    "python-multipart>=0.0.12,<1.0.0",
+    "pymupdf>=1.24.0,<2.0.0",
+    "python-docx>=1.1.2,<2.0.0",
+    "chromadb>=0.5.0,<2.0.0",
+    "openai>=1.55.0,<2.0.0",
+    "tiktoken>=0.8.0,<1.0.0",
+    "pytesseract>=0.3.10,<1.0.0",
+    "Pillow>=10.0.0,<12.0.0",
+    "langgraph>=0.2.0,<1.0.0",
+    "langchain-core>=0.3.0,<1.0.0",
+    "langchain-openai>=0.2.0,<1.0.0",
+    "duckduckgo-search>=6.0.0,<8.0.0",
+    "tavily-python>=0.5.0,<1.0.0",
+    "alembic>=1.14.0,<2.0.0",
+    "watchdog>=4.0.0,<7.0.0",
+    "httpx>=0.28.0,<1.0.0",
+    "typer>=0.12.0,<1.0.0",
+    "rich>=13.0.0,<14.0.0",
+    "cursor-sdk>=0.1.7,<1.0.0",
+    "cryptography>=42.0.0,<45.0.0",
+    "PyJWT>=2.8.0,<3.0.0",
+    "bcrypt>=4.0.0,<5.0.0",
+    "google-cloud-storage>=2.14.0,<3.0.0",
+    "boto3>=1.35.0,<2.0.0",
+]
+
+[project.scripts]
+personalops = "personalops_cli:app"
+
+[tool.setuptools]
+py-modules = ["personalops_cli", "personalops_cli_manage", "personalops_cli_nav", "config", "database", "models", "schema", "main", "db_migrate"]
+packages = ["routers", "services", "alembic"]
+
+[tool.setuptools.package-data]
+alembic = ["alembic.ini", "versions/*.py", "script.py.mako", "env.py", "README.md"]

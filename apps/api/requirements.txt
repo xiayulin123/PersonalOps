@@ -1,0 +1,54 @@
+# PersonalOps API — all dependencies (conda env: py311)
+# Install:
+#   conda activate py311
+#   cd personalops/apps/api
+#   pip install -r requirements.txt
+
+# --- Phase 0: FastAPI + SQLite ------------------------------------------------
+
+fastapi>=0.115.0,<1.0.0
+uvicorn[standard]>=0.32.0,<1.0.0
+sqlalchemy>=2.0.36,<3.0.0
+aiosqlite>=0.20.0,<1.0.0
+asyncpg>=0.30.0,<1.0.0          # Postgres async (Plan B B5 Docker)
+psycopg2-binary>=2.9.0,<3.0.0   # Postgres sync for Alembic migrations
+pydantic>=2.10.0,<3.0.0
+pydantic-settings>=2.6.0,<3.0.0
+python-multipart>=0.0.12,<1.0.0
+
+# --- Phase 1: File parsing + RAG + LLM ----------------------------------------
+
+pymupdf>=1.24.0,<2.0.0          # PDF parsing (import fitz)
+python-docx>=1.1.2,<2.0.0       # DOCX parsing
+chromadb>=0.5.0,<2.0.0          # local vector store
+openai>=1.55.0,<2.0.0           # embeddings + chat completions
+tiktoken>=0.8.0,<1.0.0          # token counting for chunker
+pytesseract>=0.3.10,<1.0.0      # Tesseract OCR bindings (Phase 3.2b)
+Pillow>=10.0.0,<12.0.0          # image handling for OCR page renders
+
+# --- Phase 2: Agent orchestration + web search --------------------------------
+
+langgraph>=0.2.0,<1.0.0         # agent graph (classify / retrieve / generate)
+langchain-core>=0.3.0,<1.0.0    # LangGraph dependency
+langchain-openai>=0.2.0,<1.0.0  # OpenAI integration for LangChain/LangGraph
+cursor-sdk>=0.1.7,<1.0.0        # Cursor Agent pipeline (optional chat engine)
+duckduckgo-search>=6.0.0,<8.0.0 # web search fallback (no API key)
+tavily-python>=0.5.0,<1.0.0     # primary web search; needs TAVILY_API_KEY
+
+# --- Plan B: Auth + GCS (B1/B3 Docker) -----------------------------------------
+
+cryptography>=42.0.0,<45.0.0
+PyJWT>=2.8.0,<3.0.0
+bcrypt>=4.0.0,<5.0.0
+google-cloud-storage>=2.14.0,<3.0.0
+boto3>=1.35.0,<2.0.0
+
+# --- Dev / tooling (optional, safe to keep installed) ---------------------------
+
+alembic>=1.14.0,<2.0.0          # DB migrations (Phase 3.1+)
+watchdog>=4.0.0,<7.0.0          # local folder watcher (Phase 3.12)
+httpx>=0.28.0,<1.0.0            # HTTP client for tests / integrations
+typer>=0.12.0,<1.0.0            # guided terminal CLI (personalops command)
+rich>=13.0.0,<14.0.0            # CLI tables, panels, markdown output
+pytest>=8.3.0,<9.0.0
+pytest-asyncio>=0.24.0,<1.0.0

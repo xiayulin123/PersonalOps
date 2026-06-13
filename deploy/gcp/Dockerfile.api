@@ -1,0 +1,30 @@
+# PersonalOps API — Plan B cloud (FastAPI + Chroma cache + Alembic)
+# Build context: personalops/ (repo app root)
+FROM python:3.11-slim-bookworm
+
+WORKDIR /app
+
+# PyMuPDF + Chroma runtime deps (minimal)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY apps/api/requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
+COPY apps/api/ /app/
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    DEPLOYMENT_MODE=cloud \
+    PERSONALOPS_DATA_DIR=/data \
+    CHROMA_PERSIST_DIR=/data/chroma
+
+EXPOSE 8000
+
+COPY deploy/gcp/scripts/entrypoint-api.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

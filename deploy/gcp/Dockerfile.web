@@ -1,0 +1,24 @@
+# PersonalOps cloud web UI — static React build + nginx reverse proxy
+# Build context: personalops/ (repo app root)
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+COPY apps/desktop/package.json apps/desktop/package-lock.json* ./
+RUN npm ci
+
+COPY apps/desktop/ ./
+
+# Same-origin API: nginx proxies /auth, /workspaces, etc. to the api service
+ENV VITE_EDITION=cloud
+ENV VITE_API_BASE=
+RUN npm run build:cloud
+
+FROM nginx:1.27-alpine
+
+COPY deploy/gcp/nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+EXPOSE 8080
+
+CMD ["nginx", "-g", "daemon off;"]
