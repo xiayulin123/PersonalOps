@@ -18,21 +18,26 @@ export function LoginPage({ onAuthenticated }: LoginPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
 
-    const trimmedEmail = email.trim();
-    if (!trimmedEmail || !password) {
+    // Read from FormData so Safari/Chrome autofill works (controlled inputs miss onChange).
+    const fd = new FormData(e.currentTarget);
+    const trimmedEmail = String(fd.get("email") ?? email).trim();
+    const passwordValue = String(fd.get("password") ?? password);
+    const confirmValue = String(fd.get("confirm") ?? confirm);
+
+    if (!trimmedEmail || !passwordValue) {
       setError("Email and password are required.");
       return;
     }
     if (mode === "register") {
-      if (password.length < 8) {
+      if (passwordValue.length < 8) {
         setError("Password must be at least 8 characters.");
         return;
       }
-      if (password !== confirm) {
+      if (passwordValue !== confirmValue) {
         setError("Passwords do not match.");
         return;
       }
@@ -42,8 +47,8 @@ export function LoginPage({ onAuthenticated }: LoginPageProps) {
     try {
       const result =
         mode === "login"
-          ? await loginAuth(trimmedEmail, password)
-          : await registerAuth(trimmedEmail, password);
+          ? await loginAuth(trimmedEmail, passwordValue)
+          : await registerAuth(trimmedEmail, passwordValue);
       setAuthToken(result.access_token);
       onAuthenticated(result.user);
     } catch (err) {
@@ -76,6 +81,7 @@ export function LoginPage({ onAuthenticated }: LoginPageProps) {
               Email
             </label>
             <input
+              name="email"
               type="email"
               autoComplete="email"
               value={email}
@@ -89,10 +95,12 @@ export function LoginPage({ onAuthenticated }: LoginPageProps) {
               Password
             </label>
             <input
+              name="password"
               type="password"
               autoComplete={mode === "login" ? "current-password" : "new-password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onInput={(e) => setPassword(e.currentTarget.value)}
               className="w-full rounded-xl border border-zinc-300 bg-background px-3 py-2 text-sm outline-none ring-primary/30 focus:border-zinc-500 focus:ring-2 dark:border-zinc-600"
               placeholder="At least 8 characters"
             />
@@ -103,10 +111,12 @@ export function LoginPage({ onAuthenticated }: LoginPageProps) {
                 Confirm password
               </label>
               <input
+                name="confirm"
                 type="password"
                 autoComplete="new-password"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
+                onInput={(e) => setConfirm(e.currentTarget.value)}
                 className="w-full rounded-xl border border-zinc-300 bg-background px-3 py-2 text-sm outline-none ring-primary/30 focus:border-zinc-500 focus:ring-2 dark:border-zinc-600"
               />
             </div>
