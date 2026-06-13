@@ -23,6 +23,9 @@ class User(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_new_id)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    email_verified: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="true", default=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False
     )
@@ -32,6 +35,24 @@ class User(Base):
     )
     api_credentials: Mapped[list["UserApiCredential"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
+    )
+
+
+class AuthEmailChallenge(Base):
+    """Short-lived email codes for register verify and password reset."""
+
+    __tablename__ = "auth_email_challenges"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_new_id)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    purpose: Mapped[str] = mapped_column(String(32), nullable=False)
+    code_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
     )
 
 

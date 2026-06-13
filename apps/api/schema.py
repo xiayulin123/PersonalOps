@@ -17,6 +17,34 @@ class AuthRegisterIn(BaseModel):
     password: str
 
 
+class AuthRegisterStartIn(BaseModel):
+    email: str
+    password: str
+
+
+class AuthRegisterVerifyIn(BaseModel):
+    email: str
+    code: str
+
+
+class AuthRegisterResendIn(BaseModel):
+    email: str
+
+
+class AuthForgotPasswordIn(BaseModel):
+    email: str
+
+
+class AuthResetPasswordIn(BaseModel):
+    email: str
+    code: str
+    new_password: str
+
+
+class AuthMessageOut(BaseModel):
+    message: str
+
+
 class AuthLoginIn(BaseModel):
     email: str
     password: str

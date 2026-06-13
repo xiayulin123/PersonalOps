@@ -64,6 +64,96 @@ export async function registerAuth(
   return res.json();
 }
 
+export type AuthMessageResponse = {
+  message: string;
+};
+
+async function postAuthMessage(
+  path: string,
+  body: Record<string, string>,
+  fallbackError: string
+): Promise<AuthMessageResponse> {
+  let res: Response;
+  try {
+    res = await apiFetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error(
+      "Cannot reach API. Start the backend on port 8000 (uvicorn main:app --reload --port 8000)."
+    );
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail ?? fallbackError);
+  }
+  return res.json();
+}
+
+export async function registerStartAuth(
+  email: string,
+  password: string
+): Promise<AuthMessageResponse> {
+  return postAuthMessage(
+    "/auth/register/start",
+    { email, password },
+    "Could not start registration"
+  );
+}
+
+export async function registerVerifyAuth(
+  email: string,
+  code: string
+): Promise<AuthTokenResponse> {
+  let res: Response;
+  try {
+    res = await apiFetch("/auth/register/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, code }),
+    });
+  } catch {
+    throw new Error(
+      "Cannot reach API. Start the backend on port 8000 (uvicorn main:app --reload --port 8000)."
+    );
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail ?? "Verification failed");
+  }
+  return res.json();
+}
+
+export async function registerResendAuth(email: string): Promise<AuthMessageResponse> {
+  return postAuthMessage(
+    "/auth/register/resend",
+    { email },
+    "Could not resend verification code"
+  );
+}
+
+export async function forgotPasswordAuth(email: string): Promise<AuthMessageResponse> {
+  return postAuthMessage(
+    "/auth/forgot-password",
+    { email },
+    "Could not send reset code"
+  );
+}
+
+export async function resetPasswordAuth(
+  email: string,
+  code: string,
+  newPassword: string
+): Promise<AuthMessageResponse> {
+  return postAuthMessage(
+    "/auth/reset-password",
+    { email, code, new_password: newPassword },
+    "Could not reset password"
+  );
+}
+
 export async function loginAuth(
   email: string,
   password: string

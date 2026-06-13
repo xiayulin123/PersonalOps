@@ -97,6 +97,10 @@ class Settings(BaseSettings):
     gcs_storage_enabled: bool = True
     admin_email: str = ""
     admin_password: str = ""
+    resend_api_key: str = ""
+    email_from: str = "PersonalOps <noreply@personalops.live>"
+    auth_email_code_ttl_minutes: int = 15
+    auth_email_resend_cooldown_sec: int = 60
 
     def model_post_init(self, __context: object) -> None:
         base = resolve_data_dir()

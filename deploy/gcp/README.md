@@ -102,5 +102,54 @@ See `env.example`. Critical vars:
 | `GCS_APP_BUCKET` | Object storage bucket |
 | `GCS_SA_FILE` | Host path to SA JSON (mounted read-only) |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | First admin bootstrap |
+| `RESEND_API_KEY` | Email verification + password reset (Resend) |
+| `EMAIL_FROM` | Sender address, e.g. `PersonalOps <noreply@personalops.live>` |
 
 Per-user OpenAI keys are stored encrypted in Postgres (B2) — not in `.env`.
+
+## Email auth (Resend) — register verify + forgot password
+
+Cloud registration sends a **6-digit code** before creating the account. Sign-in includes **Forgot password?** with the same code flow.
+
+### 1. Resend account
+
+1. Sign up at [resend.com](https://resend.com) (free tier: ~100 emails/day).
+2. Create an API key → set `RESEND_API_KEY` in `deploy/gcp/.env`.
+3. Add and verify domain **`personalops.live`** in Resend → **Domains**.
+4. Resend shows DNS records (SPF, DKIM). Add them in **GoDaddy DNS** (same panel as your A record).
+5. Wait until Resend shows domain **Verified**.
+
+### 2. Sender address
+
+```env
+EMAIL_FROM=PersonalOps <noreply@personalops.live>
+```
+
+Until the domain is verified, you can test with Resend's sandbox sender `onboarding@resend.dev` (only delivers to your Resend account email).
+
+### 3. Deploy
+
+```bash
+cd deploy/gcp
+# edit .env — RESEND_API_KEY, EMAIL_FROM
+docker compose up -d --build api web
+docker compose exec api alembic upgrade head
+```
+
+### 4. API endpoints
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/auth/register/start` | Send register code |
+| POST | `/auth/register/verify` | Verify code → create user + JWT |
+| POST | `/auth/register/resend` | Resend code (60s cooldown) |
+| POST | `/auth/forgot-password` | Send reset code |
+| POST | `/auth/reset-password` | Code + new password |
+
+Legacy `POST /auth/register` (instant, no email) only works when `RESEND_API_KEY` is empty (local tests / desktop dev).
+
+### 5. Security notes
+
+- Never commit `RESEND_API_KEY` (`.env` is gitignored).
+- Rotate the API key if it was exposed in chat or logs.
+- Codes expire in 15 minutes; max 5 wrong guesses per code.

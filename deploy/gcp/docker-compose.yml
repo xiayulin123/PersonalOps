@@ -54,6 +54,10 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       MS_GRAPH_CLIENT_ID: ${MS_GRAPH_CLIENT_ID:-}
       MS_GRAPH_CLIENT_SECRET: ${MS_GRAPH_CLIENT_SECRET:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-PersonalOps <noreply@personalops.live>}
+      AUTH_EMAIL_CODE_TTL_MINUTES: ${AUTH_EMAIL_CODE_TTL_MINUTES:-15}
+      AUTH_EMAIL_RESEND_COOLDOWN_SEC: ${AUTH_EMAIL_RESEND_COOLDOWN_SEC:-60}
     volumes:
       - app-data:/data
       - ${GCS_SA_FILE:-./secrets/gcs-archive-sa.json}:/run/secrets/gcs-sa.json:ro

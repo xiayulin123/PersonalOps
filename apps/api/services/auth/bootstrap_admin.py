@@ -37,7 +37,11 @@ async def _get_or_create_admin(
     if user is not None:
         return user, False
 
-    user = User(email=email, password_hash=hash_password(password))
+    user = User(
+        email=email,
+        password_hash=hash_password(password),
+        email_verified=True,
+    )
     db.add(user)
     await db.commit()
     await db.refresh(user)

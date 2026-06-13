@@ -12,6 +12,7 @@ from httpx import ASGITransport, AsyncClient
 
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret-for-b1-tests-only")
 os.environ.setdefault("DEPLOYMENT_MODE", "cloud")
+os.environ["RESEND_API_KEY"] = ""
 
 from main import app  # noqa: E402
 
@@ -33,19 +34,20 @@ async def test_register_login_and_workspace_isolation(client):
     email_b = _unique_email("bob")
     password = "password123"
 
-    reg_a = await client.post(
-        "/auth/register",
-        json={"email": email_a, "password": password},
-    )
-    assert reg_a.status_code == 201, reg_a.text
-    token_a = reg_a.json()["access_token"]
+    with patch("routers.auth.is_email_delivery_enabled", return_value=False):
+        reg_a = await client.post(
+            "/auth/register",
+            json={"email": email_a, "password": password},
+        )
+        assert reg_a.status_code == 201, reg_a.text
+        token_a = reg_a.json()["access_token"]
 
-    reg_b = await client.post(
-        "/auth/register",
-        json={"email": email_b, "password": password},
-    )
-    assert reg_b.status_code == 201, reg_b.text
-    token_b = reg_b.json()["access_token"]
+        reg_b = await client.post(
+            "/auth/register",
+            json={"email": email_b, "password": password},
+        )
+        assert reg_b.status_code == 201, reg_b.text
+        token_b = reg_b.json()["access_token"]
 
     headers_a = {"Authorization": f"Bearer {token_a}"}
     headers_b = {"Authorization": f"Bearer {token_b}"}
