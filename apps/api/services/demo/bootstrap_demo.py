@@ -53,6 +53,11 @@ logger = logging.getLogger(__name__)
 
 _DEMO_DATA_ROOT = Path(__file__).resolve().parents[2] / "demo_data" / "files"
 
+
+def _utc_now() -> datetime:
+    """Naive UTC for Postgres TIMESTAMP WITHOUT TIME ZONE (asyncpg)."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
 FILE_SPECS: tuple[tuple[str, str, str], ...] = (
     (WS_STUDY, "study/os-deadlock-notes.md", "os-deadlock-notes.md"),
     (WS_STUDY, "study/probability-basics.md", "probability-basics.md"),
@@ -277,7 +282,7 @@ async def _seed_conversations(
     *,
     gcs_ok: bool = False,
 ) -> list[Conversation]:
-    now = datetime.now(timezone.utc)
+    now = _utc_now()
     study_file = files[f"{WS_STUDY}:os-deadlock-notes.md"]
     conv_specs = [
         (
@@ -534,14 +539,14 @@ async def _seed_study(db: AsyncSession, files: dict[str, File]) -> None:
         score_json=json.dumps(
             {"correct": 2, "total": 2, "auto_scored_correct": 2, "auto_scored_total": 2}
         ),
-        submitted_at=datetime.now(timezone.utc) - timedelta(days=1),
+        submitted_at=_utc_now() - timedelta(days=1),
     )
     db.add(attempt)
     await db.commit()
 
 
 async def _seed_life(db: AsyncSession) -> None:
-    now = datetime.now(timezone.utc)
+    now = _utc_now()
     db.add(
         LifeOutlookConnection(
             workspace_id=WS_LIFE,
@@ -613,7 +618,7 @@ async def _seed_code_career(db: AsyncSession) -> None:
             default_branch="main",
             repo_full_name="example/personalops",
             repo_description="Demo linked repo for the code workspace.",
-            last_synced_at=datetime.now(timezone.utc) - timedelta(days=2),
+            last_synced_at=_utc_now() - timedelta(days=2),
         )
     )
     await db.commit()
@@ -629,7 +634,7 @@ async def _seed_personalization(db: AsyncSession) -> None:
             content="Explain deadlock prevention strategies from my notes.",
             chat_mode="langgraph",
             char_count=52,
-            created_at=datetime.now(timezone.utc) - timedelta(days=2),
+            created_at=_utc_now() - timedelta(days=2),
         )
     )
     db.add(
@@ -639,7 +644,7 @@ async def _seed_personalization(db: AsyncSession) -> None:
             period_start=week_start,
             prompt_count=12,
             distillation_status="completed",
-            distilled_at=datetime.now(timezone.utc) - timedelta(days=1),
+            distilled_at=_utc_now() - timedelta(days=1),
             summary_json=json.dumps(
                 {
                     "themes": ["deadlock", "scheduling", "practice questions"],
