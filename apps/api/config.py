@@ -97,6 +97,10 @@ class Settings(BaseSettings):
     gcs_storage_enabled: bool = True
     admin_email: str = ""
     admin_password: str = ""
+    demo_email: str = "demo@personalops.live"
+    demo_password: str = "demo1234"
+    demo_user_id: str = "00000000-0000-4000-8000-000000000001"
+    demo_auto_seed: bool = False
     resend_api_key: str = ""
     email_from: str = "PersonalOps <noreply@personalops.live>"
     auth_email_code_ttl_minutes: int = 15

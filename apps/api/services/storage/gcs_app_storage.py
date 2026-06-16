@@ -195,6 +195,27 @@ def get_user_storage_bytes(user_id: str) -> int:
     return total
 
 
+def copy_prefix(*, source_prefix: str, dest_prefix: str) -> str:
+    """Copy all objects under source_prefix to dest_prefix within the app bucket."""
+    bucket_name = _bucket_name()
+    client = _gcs_client()
+    bucket = client.bucket(bucket_name)
+    copied = 0
+    source = source_prefix.rstrip("/") + "/"
+    dest = dest_prefix.rstrip("/") + "/"
+    for blob in client.list_blobs(bucket_name, prefix=source):
+        name = blob.name or ""
+        if not name.startswith(source):
+            continue
+        relative = name[len(source) :]
+        if not relative:
+            continue
+        target_name = f"{dest}{relative}"
+        bucket.copy_blob(blob, bucket, new_name=target_name)
+        copied += 1
+    return f"gs://{bucket_name}/{dest} ({copied} objects)"
+
+
 def count_user_conversation_exports(user_id: str) -> int:
     bucket_name = _bucket_name()
     prefix = f"{user_prefix(user_id)}/workspaces/"

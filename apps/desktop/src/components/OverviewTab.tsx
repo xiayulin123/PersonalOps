@@ -24,6 +24,7 @@ export type WorkspaceNavTab =
   | "overview"
   | "files"
   | "chat"
+  | "study"
   | "inbox"
   | "calendar"
   | "memory"

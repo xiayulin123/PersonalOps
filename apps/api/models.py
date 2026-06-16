@@ -26,6 +26,9 @@ class User(Base):
     email_verified: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default="true", default=True
     )
+    is_demo: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false", default=False
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False
     )
@@ -138,6 +141,14 @@ class Workspace(Base):
         cascade="all, delete-orphan",
     )
     life_calendar_events: Mapped[list["LifeCalendarEvent"]] = relationship(
+        back_populates="workspace",
+        cascade="all, delete-orphan",
+    )
+    study_concepts: Mapped[list["StudyConcept"]] = relationship(
+        back_populates="workspace",
+        cascade="all, delete-orphan",
+    )
+    study_question_sets: Mapped[list["StudyQuestionSet"]] = relationship(
         back_populates="workspace",
         cascade="all, delete-orphan",
     )
@@ -421,3 +432,109 @@ class PromptPeriodStats(Base):
     )
     distilled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     summary_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class StudyConcept(Base):
+    """Review concept card (Study workspace S1)."""
+
+    __tablename__ = "study_concepts"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_new_id)
+    workspace_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    key_points_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    example: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sources_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    mastery: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="learning"
+    )  # learning | reviewing | mastered
+    source_file_ids_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    workspace: Mapped["Workspace"] = relationship(back_populates="study_concepts")
+
+
+class StudyQuestionSet(Base):
+    """Practice question batch or practice test (Study workspace S1)."""
+
+    __tablename__ = "study_question_sets"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_new_id)
+    workspace_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)  # practice | test
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    settings_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+
+    workspace: Mapped["Workspace"] = relationship(back_populates="study_question_sets")
+    questions: Mapped[list["StudyQuestion"]] = relationship(
+        back_populates="question_set",
+        cascade="all, delete-orphan",
+        order_by="StudyQuestion.sort_order",
+    )
+    attempts: Mapped[list["StudyTestAttempt"]] = relationship(
+        back_populates="question_set",
+        cascade="all, delete-orphan",
+    )
+
+
+class StudyQuestion(Base):
+    __tablename__ = "study_questions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_new_id)
+    set_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("study_question_sets.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    workspace_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    question_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    options_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    correct_answer: Mapped[str] = mapped_column(Text, nullable=False)
+    explanation: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    solution_steps_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sources_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    topic: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    question_set: Mapped["StudyQuestionSet"] = relationship(back_populates="questions")
+
+
+class StudyTestAttempt(Base):
+    __tablename__ = "study_test_attempts"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_new_id)
+    set_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("study_question_sets.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    workspace_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    answers_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    score_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    question_set: Mapped["StudyQuestionSet"] = relationship(back_populates="attempts")

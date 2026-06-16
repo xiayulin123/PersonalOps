@@ -33,6 +33,7 @@ export type AuthUser = {
   id: string;
   email: string;
   created_at: string;
+  is_demo?: boolean;
 };
 
 export type AuthTokenResponse = {
@@ -185,6 +186,19 @@ export async function fetchAuthMe(): Promise<AuthUser> {
 
 export async function logoutAuth(): Promise<void> {
   await apiFetch("/auth/logout", { method: "POST" });
+}
+
+export type DemoAccountInfo = {
+  available: boolean;
+  email?: string;
+};
+
+export async function fetchDemoAccount(): Promise<DemoAccountInfo> {
+  const res = await apiFetch("/auth/demo-account");
+  if (!res.ok) {
+    return { available: false };
+  }
+  return res.json();
 }
 
 export type StorageStatus = {
@@ -874,6 +888,341 @@ export type TaskTemplate = {
 export async function listTemplates(workspaceId: string): Promise<TaskTemplate[]> {
     const res = await apiFetch(`/workspaces/${workspaceId}/templates`);
     if (!res.ok) throw new Error("Failed to list templates");
+    return res.json();
+}
+
+export type StudySourceFile = {
+    id: string;
+    filename: string;
+    chunk_count: number;
+    status: string;
+};
+
+export type StudySources = {
+    workspace_id: string;
+    ready_count: number;
+    files: StudySourceFile[];
+};
+
+export async function fetchStudySources(workspaceId: string): Promise<StudySources> {
+    const res = await apiFetch(`/workspaces/${workspaceId}/study/sources`);
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { detail?: string }).detail ?? "Failed to load study sources");
+    }
+    return res.json();
+}
+
+export type StudyMastery = "learning" | "reviewing" | "mastered";
+export type StudyLanguage = "bilingual" | "english" | "chinese";
+
+export type StudyConceptSource = {
+    file_id: string;
+    filename: string;
+    page: number;
+    excerpt: string;
+};
+
+export type StudyConcept = {
+    id: string;
+    workspace_id: string;
+    title: string;
+    summary: string;
+    key_points: string[];
+    example: string | null;
+    sources: StudyConceptSource[];
+    mastery: StudyMastery;
+    source_file_ids: string[];
+    created_at: string;
+    updated_at: string;
+};
+
+export type StudyConceptGenerateBody = {
+    file_ids: string[];
+    count?: number;
+    topic_hint?: string | null;
+    /** Legacy fallback when title_language / content_language are omitted */
+    language?: StudyLanguage;
+    title_language?: StudyLanguage;
+    content_language?: StudyLanguage;
+};
+
+export type StudyConceptGenerateResult = {
+    generated_count: number;
+    concepts: StudyConcept[];
+};
+
+export type StudyConceptPatchBody = {
+    title?: string;
+    summary?: string;
+    key_points?: string[];
+    example?: string | null;
+    mastery?: StudyMastery;
+};
+
+export async function listStudyConcepts(workspaceId: string): Promise<StudyConcept[]> {
+    const res = await apiFetch(`/workspaces/${workspaceId}/study/concepts`);
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { detail?: string }).detail ?? "Failed to load concepts");
+    }
+    return res.json();
+}
+
+export async function generateStudyConcepts(
+    workspaceId: string,
+    body: StudyConceptGenerateBody
+): Promise<StudyConceptGenerateResult> {
+    const res = await apiFetch(`/workspaces/${workspaceId}/study/concepts/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { detail?: string }).detail ?? "Failed to generate concepts");
+    }
+    return res.json();
+}
+
+export async function patchStudyConcept(
+    workspaceId: string,
+    conceptId: string,
+    body: StudyConceptPatchBody
+): Promise<StudyConcept> {
+    const res = await apiFetch(`/workspaces/${workspaceId}/study/concepts/${conceptId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { detail?: string }).detail ?? "Failed to update concept");
+    }
+    return res.json();
+}
+
+export async function deleteStudyConcept(
+    workspaceId: string,
+    conceptId: string
+): Promise<void> {
+    const res = await apiFetch(`/workspaces/${workspaceId}/study/concepts/${conceptId}`, {
+        method: "DELETE",
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { detail?: string }).detail ?? "Failed to delete concept");
+    }
+}
+
+export type StudyQuestionType = "mcq" | "short_answer" | "true_false" | "calculation";
+export type StudyDifficulty = "easy" | "medium" | "hard";
+export type StudyQuestionSetKind = "practice" | "test";
+
+export type StudyQuestion = {
+    id: string;
+    set_id: string;
+    workspace_id: string;
+    question_type: StudyQuestionType;
+    prompt: string;
+    options: string[] | null;
+    correct_answer: string;
+    explanation: string;
+    solution_steps: string[];
+    sources: StudyConceptSource[];
+    topic: string | null;
+    sort_order: number;
+};
+
+export type StudyQuestionSetSummary = {
+    id: string;
+    workspace_id: string;
+    kind: StudyQuestionSetKind;
+    title: string;
+    question_count: number;
+    created_at: string;
+};
+
+export type StudyQuestionSet = StudyQuestionSetSummary & {
+    settings: Record<string, unknown>;
+    questions: StudyQuestion[];
+};
+
+export type StudyQuestionTypeCounts = {
+    mcq: number;
+    short_answer: number;
+    calculation: number;
+    true_false: number;
+};
+
+export type StudyQuestionsGenerateBody = {
+    file_ids: string[];
+    type_counts: StudyQuestionTypeCounts;
+    difficulty?: StudyDifficulty;
+    title?: string | null;
+    topic_hint?: string | null;
+    content_language?: StudyLanguage;
+};
+
+export type StudyQuestionsGenerateResult = {
+    question_set: StudyQuestionSet;
+    requested_count: number;
+    generated_count: number;
+    type_counts_requested: StudyQuestionTypeCounts;
+    type_counts_generated: StudyQuestionTypeCounts;
+};
+
+export type StudyTestGenerateBody = StudyQuestionsGenerateBody & {
+    time_limit_min?: number;
+};
+
+export type StudyTestGenerateResult = StudyQuestionsGenerateResult;
+
+export type StudyQuestionTake = {
+    id: string;
+    set_id: string;
+    question_type: StudyQuestionType;
+    prompt: string;
+    options: string[] | null;
+    topic: string | null;
+    sort_order: number;
+};
+
+export type StudyAttemptStart = {
+    attempt_id: string;
+    set_id: string;
+    set_title: string;
+    time_limit_min: number;
+    started_at: string;
+    questions: StudyQuestionTake[];
+};
+
+export type StudyAttemptResult = {
+    attempt_id: string;
+    set_id: string;
+    started_at: string;
+    submitted_at: string | null;
+    answers: Record<string, string>;
+    score: Record<string, unknown>;
+    questions: StudyQuestion[];
+};
+
+export async function listStudyQuestionSets(
+    workspaceId: string,
+    kind: StudyQuestionSetKind = "practice"
+): Promise<StudyQuestionSetSummary[]> {
+    const res = await apiFetch(
+        `/workspaces/${workspaceId}/study/question-sets?kind=${encodeURIComponent(kind)}`
+    );
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { detail?: string }).detail ?? "Failed to load question sets");
+    }
+    return res.json();
+}
+
+export async function fetchStudyQuestionSet(
+    workspaceId: string,
+    setId: string
+): Promise<StudyQuestionSet> {
+    const res = await apiFetch(`/workspaces/${workspaceId}/study/question-sets/${setId}`);
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { detail?: string }).detail ?? "Failed to load question set");
+    }
+    return res.json();
+}
+
+export async function generateStudyQuestions(
+    workspaceId: string,
+    body: StudyQuestionsGenerateBody
+): Promise<StudyQuestionsGenerateResult> {
+    const res = await apiFetch(`/workspaces/${workspaceId}/study/questions/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { detail?: string }).detail ?? "Failed to generate questions");
+    }
+    return res.json();
+}
+
+export async function deleteStudyQuestionSet(
+    workspaceId: string,
+    setId: string
+): Promise<void> {
+    const res = await apiFetch(`/workspaces/${workspaceId}/study/question-sets/${setId}`, {
+        method: "DELETE",
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { detail?: string }).detail ?? "Failed to delete question set");
+    }
+}
+
+export async function generateStudyTest(
+    workspaceId: string,
+    body: StudyTestGenerateBody
+): Promise<StudyTestGenerateResult> {
+    const res = await apiFetch(`/workspaces/${workspaceId}/study/tests/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { detail?: string }).detail ?? "Failed to generate test");
+    }
+    return res.json();
+}
+
+export async function startStudyTestAttempt(
+    workspaceId: string,
+    setId: string
+): Promise<StudyAttemptStart> {
+    const res = await apiFetch(`/workspaces/${workspaceId}/study/tests/${setId}/attempts`, {
+        method: "POST",
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { detail?: string }).detail ?? "Failed to start test");
+    }
+    return res.json();
+}
+
+export async function submitStudyTestAttempt(
+    workspaceId: string,
+    attemptId: string,
+    answers: Record<string, string>
+): Promise<StudyAttemptResult> {
+    const res = await apiFetch(
+        `/workspaces/${workspaceId}/study/tests/attempts/${attemptId}/submit`,
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ answers }),
+        }
+    );
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { detail?: string }).detail ?? "Failed to submit test");
+    }
+    return res.json();
+}
+
+export async function fetchStudyTestAttempt(
+    workspaceId: string,
+    attemptId: string
+): Promise<StudyAttemptResult> {
+    const res = await apiFetch(
+        `/workspaces/${workspaceId}/study/tests/attempts/${attemptId}`
+    );
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { detail?: string }).detail ?? "Failed to load attempt");
+    }
     return res.json();
 }
 

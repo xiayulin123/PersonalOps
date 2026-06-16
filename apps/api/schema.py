@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 WorkspaceType = Literal["study", "code", "life", "career"]
 WORKSPACE_TYPES = frozenset({"study", "code", "life", "career"})
@@ -54,6 +54,7 @@ class UserOut(BaseModel):
     id: str
     email: str
     created_at: datetime
+    is_demo: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -501,3 +502,195 @@ class PersonalizationWipeOut(BaseModel):
 
 class PersonalizationAdoptAllOut(BaseModel):
     adopted: int
+
+
+class StudySourceFileOut(BaseModel):
+    id: str
+    filename: str
+    chunk_count: int
+    status: str
+
+
+class StudySourcesOut(BaseModel):
+    workspace_id: str
+    ready_count: int
+    files: list[StudySourceFileOut]
+
+
+StudyMastery = Literal["learning", "reviewing", "mastered"]
+StudyLanguage = Literal["bilingual", "english", "chinese"]
+
+
+class StudyConceptSourceOut(BaseModel):
+    file_id: str = ""
+    filename: str
+    page: int = 1
+    excerpt: str = ""
+
+
+class StudyConceptOut(BaseModel):
+    id: str
+    workspace_id: str
+    title: str
+    summary: str
+    key_points: list[str] = Field(default_factory=list)
+    example: str | None = None
+    sources: list[StudyConceptSourceOut] = Field(default_factory=list)
+    mastery: StudyMastery = "learning"
+    source_file_ids: list[str] = Field(default_factory=list)
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class StudyConceptGenerateIn(BaseModel):
+    file_ids: list[str] = Field(min_length=1)
+    count: int = Field(default=10, ge=1, le=30)
+    topic_hint: str | None = None
+    language: StudyLanguage = "bilingual"
+    title_language: StudyLanguage | None = None
+    content_language: StudyLanguage | None = None
+
+
+class StudyConceptGenerateOut(BaseModel):
+    generated_count: int
+    concepts: list[StudyConceptOut]
+
+
+class StudyConceptPatchIn(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=512)
+    summary: str | None = None
+    key_points: list[str] | None = None
+    example: str | None = None
+    mastery: StudyMastery | None = None
+
+
+StudyQuestionType = Literal["mcq", "short_answer", "true_false", "calculation"]
+StudyDifficulty = Literal["easy", "medium", "hard"]
+StudyQuestionSetKind = Literal["practice", "test"]
+
+
+class StudyQuestionOut(BaseModel):
+    id: str
+    set_id: str
+    workspace_id: str
+    question_type: StudyQuestionType
+    prompt: str
+    options: list[str] | None = None
+    correct_answer: str
+    explanation: str
+    solution_steps: list[str] = Field(default_factory=list)
+    sources: list[StudyConceptSourceOut] = Field(default_factory=list)
+    topic: str | None = None
+    sort_order: int = 0
+
+
+class StudyQuestionSetSummaryOut(BaseModel):
+    id: str
+    workspace_id: str
+    kind: StudyQuestionSetKind
+    title: str
+    question_count: int
+    created_at: datetime
+
+
+class StudyQuestionSetOut(BaseModel):
+    id: str
+    workspace_id: str
+    kind: StudyQuestionSetKind
+    title: str
+    settings: dict = Field(default_factory=dict)
+    question_count: int
+    created_at: datetime
+    questions: list[StudyQuestionOut] = Field(default_factory=list)
+
+
+class StudyQuestionTypeCountsIn(BaseModel):
+    mcq: int = Field(default=0, ge=0, le=10)
+    short_answer: int = Field(default=0, ge=0, le=10)
+    calculation: int = Field(default=0, ge=0, le=10)
+    true_false: int = Field(default=0, ge=0, le=10)
+
+    @model_validator(mode="after")
+    def at_least_one_type(self):
+        total = self.mcq + self.short_answer + self.calculation + self.true_false
+        if total < 1:
+            raise ValueError("At least one question type count must be >= 1")
+        return self
+
+    def as_dict(self) -> dict[str, int]:
+        return {
+            "mcq": self.mcq,
+            "short_answer": self.short_answer,
+            "calculation": self.calculation,
+            "true_false": self.true_false,
+        }
+
+
+class StudyQuestionsGenerateIn(BaseModel):
+    file_ids: list[str] = Field(min_length=1)
+    type_counts: StudyQuestionTypeCountsIn
+    difficulty: StudyDifficulty = "medium"
+    title: str | None = Field(default=None, max_length=255)
+    topic_hint: str | None = None
+    content_language: StudyLanguage = "bilingual"
+
+
+class StudyQuestionsGenerateOut(BaseModel):
+    question_set: StudyQuestionSetOut
+    requested_count: int
+    generated_count: int
+    type_counts_requested: dict[str, int] = Field(default_factory=dict)
+    type_counts_generated: dict[str, int] = Field(default_factory=dict)
+
+
+class StudyTestGenerateIn(BaseModel):
+    file_ids: list[str] = Field(min_length=1)
+    type_counts: StudyQuestionTypeCountsIn
+    difficulty: StudyDifficulty = "medium"
+    title: str | None = Field(default=None, max_length=255)
+    topic_hint: str | None = None
+    content_language: StudyLanguage = "bilingual"
+    time_limit_min: int = Field(default=45, ge=5, le=180)
+
+
+class StudyTestGenerateOut(BaseModel):
+    question_set: StudyQuestionSetOut
+    requested_count: int
+    generated_count: int
+    type_counts_requested: dict[str, int] = Field(default_factory=dict)
+    type_counts_generated: dict[str, int] = Field(default_factory=dict)
+
+
+class StudyQuestionTakeOut(BaseModel):
+    id: str
+    set_id: str
+    question_type: StudyQuestionType
+    prompt: str
+    options: list[str] | None = None
+    topic: str | None = None
+    sort_order: int = 0
+
+
+class StudyAttemptStartOut(BaseModel):
+    attempt_id: str
+    set_id: str
+    set_title: str
+    time_limit_min: int
+    started_at: datetime
+    questions: list[StudyQuestionTakeOut] = Field(default_factory=list)
+
+
+class StudyAttemptSubmitIn(BaseModel):
+    answers: dict[str, str] = Field(default_factory=dict)
+
+
+class StudyAttemptResultOut(BaseModel):
+    attempt_id: str
+    set_id: str
+    started_at: datetime
+    submitted_at: datetime | None = None
+    answers: dict[str, str] = Field(default_factory=dict)
+    score: dict = Field(default_factory=dict)
+    questions: list[StudyQuestionOut] = Field(default_factory=list)

@@ -13,6 +13,11 @@ from schema import (
     UserCredentialsOut,
 )
 from services.auth.dependencies import get_current_user_required
+from services.demo.guards import (
+    assert_demo_can_edit_credentials,
+    is_demo_user,
+    platform_credentials_for_demo,
+)
 from services.auth.user_credentials import (
     SUPPORTED_PROVIDERS,
     list_user_credentials_masked,
@@ -40,6 +45,21 @@ async def list_credentials(
     current_user: User = Depends(get_current_user_required),
     db: AsyncSession = Depends(get_db),
 ):
+    if is_demo_user(current_user):
+        platform = platform_credentials_for_demo()
+        items: list[UserCredentialOut] = []
+        for provider in _UI_PROVIDERS:
+            configured = provider in platform
+            items.append(
+                UserCredentialOut(
+                    provider=provider,
+                    masked="platform••••" if configured else "",
+                    configured=configured,
+                    updated_at=None,
+                )
+            )
+        return UserCredentialsOut(items=items)
+
     configured = {
         item["provider"]: item
         for item in await list_user_credentials_masked(db, user_id=current_user.id)
@@ -74,6 +94,7 @@ async def upsert_credential(
     current_user: User = Depends(get_current_user_required),
     db: AsyncSession = Depends(get_db),
 ):
+    assert_demo_can_edit_credentials(current_user)
     provider = _provider_label(body.provider)
     if provider not in SUPPORTED_PROVIDERS:
         raise HTTPException(status_code=400, detail=f"Unsupported provider: {provider}")

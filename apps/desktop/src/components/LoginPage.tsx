@@ -1,8 +1,9 @@
-import { FormEvent, useState } from "react";
-import { KeyRound, Loader2, LogIn, Mail, UserPlus } from "lucide-react";
+import { FormEvent, useEffect, useState } from "react";
+import { KeyRound, Loader2, LogIn, Mail, Sparkles, UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
+  fetchDemoAccount,
   forgotPasswordAuth,
   loginAuth,
   registerAuth,
@@ -35,8 +36,37 @@ export function LoginPage({ onAuthenticated }: LoginPageProps) {
   const [info, setInfo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [demoEmail, setDemoEmail] = useState<string | null>(null);
 
   const useEmailVerification = isCloudEdition();
+
+  useEffect(() => {
+    void fetchDemoAccount().then((info) => {
+      if (info.available && info.email) {
+        setDemoEmail(info.email);
+      }
+    });
+  }, []);
+
+  async function handleDemoLogin() {
+    if (!demoEmail) return;
+    setError(null);
+    setInfo(null);
+    setLoading(true);
+    try {
+      const result = await loginAuth(demoEmail, "demo1234");
+      setAuthToken(result.access_token);
+      onAuthenticated(result.user);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Example account is not ready. Ask the admin to run: python -m personalops_cli admin seed-demo"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
 
   function switchMode(next: AuthMode) {
     setMode(next);
@@ -331,6 +361,27 @@ export function LoginPage({ onAuthenticated }: LoginPageProps) {
                     : "Update password"}
           </Button>
         </form>
+
+        {mode === "login" && demoEmail && (
+          <div className="mt-4 space-y-2 rounded-xl border border-dashed border-primary/30 bg-primary/5 p-3">
+            <p className="text-xs font-medium text-foreground">Try the example account</p>
+            <p className="text-xs text-muted-foreground">
+              Pre-loaded workspaces (Study, Code, Life, Career) with demo files, chat history,
+              inbox, calendar, and study questions. API keys are provided by the platform — you
+              cannot add your own on this account.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              disabled={loading}
+              onClick={() => void handleDemoLogin()}
+            >
+              <Sparkles data-icon="inline-start" className="size-4" />
+              Sign in as {demoEmail}
+            </Button>
+          </div>
+        )}
 
         {mode === "verify" && (
           <p className="mt-4 text-center text-sm text-muted-foreground">

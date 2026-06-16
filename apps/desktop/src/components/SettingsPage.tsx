@@ -10,6 +10,7 @@ import {
 
 type SettingsPageProps = {
   onClose?: () => void;
+  isDemo?: boolean;
 };
 
 const PROVIDER_META: Record<
@@ -29,7 +30,7 @@ const PROVIDER_META: Record<
   },
 };
 
-export function SettingsPage({ onClose }: SettingsPageProps) {
+export function SettingsPage({ onClose, isDemo = false }: SettingsPageProps) {
   const [items, setItems] = useState<UserCredential[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -86,8 +87,9 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
             <h2 className="text-sm font-semibold">Account Settings</h2>
           </div>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Your API keys are encrypted in the database and used only for your
-            account. They are never shown in full after saving.
+            {isDemo
+              ? "This is the read-only example account. Platform API keys are used automatically — you cannot add or change keys here."
+              : "Your API keys are encrypted in the database and used only for your account. They are never shown in full after saving."}
           </p>
         </div>
         {onClose && (
@@ -128,10 +130,13 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
                 <input
                   type="password"
                   autoComplete="off"
+                  disabled={isDemo}
                   placeholder={
-                    item.configured
-                      ? "Enter new key to replace, or leave empty and Save to remove"
-                      : meta.placeholder
+                    isDemo
+                      ? "Not available on the example account"
+                      : item.configured
+                        ? "Enter new key to replace, or leave empty and Save to remove"
+                        : meta.placeholder
                   }
                   value={drafts[item.provider] ?? ""}
                   onChange={(event) =>
@@ -146,7 +151,7 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
                   <Button
                     type="button"
                     size="sm"
-                    disabled={saving === item.provider}
+                    disabled={isDemo || saving === item.provider}
                     onClick={() => void handleSave(item.provider)}
                   >
                     {saving === item.provider ? (

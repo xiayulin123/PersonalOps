@@ -5,6 +5,7 @@ import {
   Brain,
   Calendar,
   Files,
+  GraduationCap,
   KeyRound,
   LayoutDashboard,
   Loader2,
@@ -25,6 +26,7 @@ import { EvalDashboard } from "@/components/EvalDashboard";
 import { OverviewTab, type WorkspaceNavTab } from "@/components/OverviewTab";
 import { LifeCalendarTab } from "@/components/LifeCalendarTab";
 import { LifeInboxTab } from "@/components/LifeInboxTab";
+import { StudyTab } from "@/components/StudyTab";
 import { ToolsTab } from "@/components/ToolsTab";
 import { SettingsPage } from "@/components/SettingsPage";
 import { WorkspaceSidebar } from "@/components/WorkspaceSidebar";
@@ -159,6 +161,21 @@ function WorkspaceContent({
           <MessageSquare className="size-4" />
           Chat
         </button>
+        {workspace.type === "study" && (
+          <button
+            type="button"
+            onClick={() => setTab("study")}
+            className={cn(
+              "inline-flex items-center gap-2 border-b-2 px-3 py-1.5 text-sm font-medium transition-colors",
+              tab === "study"
+                ? "border-primary text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <GraduationCap className="size-4" />
+            Study
+          </button>
+        )}
         {workspace.type === "life" && (
           <>
             <button
@@ -230,7 +247,7 @@ function WorkspaceContent({
         </button>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         {tab === "overview" ? (
           <OverviewTab
             workspaceId={workspace.id}
@@ -244,6 +261,11 @@ function WorkspaceContent({
           <ChatTab
             workspaceId={workspace.id}
             chatMode={workspace.chat_mode ?? "langgraph"}
+          />
+        ) : tab === "study" ? (
+          <StudyTab
+            workspaceId={workspace.id}
+            onNavigateToFiles={() => setTab("files")}
           />
         ) : tab === "inbox" ? (
           <LifeInboxTab
@@ -403,7 +425,10 @@ function App() {
           )}
         >
           {showSettings ? (
-            <SettingsPage onClose={() => setShowSettings(false)} />
+            <SettingsPage
+              onClose={() => setShowSettings(false)}
+              isDemo={Boolean(authUser?.is_demo)}
+            />
           ) : selected ? (
             <WorkspaceContent
               workspace={selected}

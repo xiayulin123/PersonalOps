@@ -142,6 +142,22 @@ async def me(current_user: User = Depends(get_current_user_required)):
     return _user_out(current_user)
 
 
+@router.get("/demo-account")
+async def demo_account(db: AsyncSession = Depends(get_db)):
+    """Public hint for the read-only example login (no password returned)."""
+    from config import settings
+    from services.demo.constants import DEMO_USER_ID
+
+    user = await db.get(User, DEMO_USER_ID)
+    if user is None:
+        user = await db.scalar(
+            select(User).where(User.email == settings.demo_email.strip().lower())
+        )
+    if user is None or not user.is_demo:
+        return {"available": False}
+    return {"available": True, "email": user.email}
+
+
 @router.post("/logout", status_code=204)
 async def logout():
     """Client should discard the JWT; no server-side session in B1."""

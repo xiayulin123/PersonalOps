@@ -1626,6 +1626,52 @@ def admin_bootstrap_cmd(
     run_cli(_run())
 
 
+@admin_app.command("seed-demo")
+def admin_seed_demo_cmd(
+    force: bool = typer.Option(False, "--force", help="Delete and rebuild demo data"),
+    skip_index: bool = typer.Option(False, "--skip-index", help="Skip Chroma indexing"),
+    with_gcs: bool = typer.Option(
+        False,
+        "--with-gcs",
+        help="Upload demo files and conversations to GCS (requires cloud + credentials)",
+    ),
+    publish_bundle: bool = typer.Option(
+        False,
+        "--publish-bundle",
+        help="Copy demo user GCS prefix to system/demo-bundle",
+    ),
+) -> None:
+    """Create the read-only demo account with sample workspaces and data."""
+    from database import SessionLocal
+    from services.demo.bootstrap_demo import bootstrap_demo
+
+    _bootstrap()
+
+    async def _run() -> None:
+        async with SessionLocal() as db:
+            result = await bootstrap_demo(
+                db,
+                force=force,
+                index_files=not skip_index,
+                use_gcs=with_gcs,
+                publish_gcs_bundle=publish_bundle,
+            )
+        console.print("[green]Demo seed complete[/green]")
+        console.print(f"  email: {result.email}")
+        console.print(f"  password: (see DEMO_PASSWORD in .env)")
+        console.print(f"  user_id: {result.user_id}")
+        console.print(f"  workspaces: {result.workspaces}")
+        console.print(f"  files: {result.files}")
+        console.print(f"  conversations: {result.conversations}")
+        console.print(f"  indexed_files: {result.indexed_files}")
+        if result.gcs_bundle_prefix:
+            console.print(f"  gcs_bundle: {result.gcs_bundle_prefix}")
+        for warning in result.warnings:
+            console.print(f"[yellow]  warning: {warning}[/yellow]")
+
+    run_cli(_run())
+
+
 @admin_app.command("export-conversations")
 def admin_export_conversations_cmd(
     email: Optional[str] = typer.Option(None, "--email", help="User email (default ADMIN_EMAIL)"),

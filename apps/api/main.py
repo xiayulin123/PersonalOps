@@ -27,11 +27,13 @@ from routers import (
     metrics,
     oauth_pages,
     personalization,
+    study,
     templates,
     tools,
     watcher,
     workspaces,
 )
+from config import settings
 from services.deployment import is_cloud_deployment
 from services import folder_watcher
 from routers.files import reset_stale_ocr_files
@@ -42,9 +44,26 @@ from services.personalization.scheduler import start_personalization_scheduler
 logger = logging.getLogger(__name__)
 
 
+async def _maybe_seed_demo_account() -> None:
+    from database import SessionLocal
+    from services.demo.bootstrap_demo import bootstrap_demo
+
+    try:
+        async with SessionLocal() as db:
+            result = await bootstrap_demo(db, force=False, index_files=False)
+        if result.warnings:
+            logger.info("Demo auto-seed: %s", "; ".join(result.warnings))
+        else:
+            logger.info("Demo account ready: %s", result.email)
+    except Exception as exc:
+        logger.warning("Demo auto-seed skipped: %s", exc)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     run_migrations()
+    if settings.demo_auto_seed:
+        await _maybe_seed_demo_account()
     # Watch-folder full scans can index many files — never block HTTP startup.
     asyncio.create_task(folder_watcher.start_all_from_db())
     if not is_cloud_deployment():
@@ -81,6 +100,7 @@ app.include_router(watcher.router)
 app.include_router(metrics.router)
 app.include_router(life_plugins.router)
 app.include_router(personalization.router)
+app.include_router(study.router)
 app.include_router(oauth_pages.router)
 
 
